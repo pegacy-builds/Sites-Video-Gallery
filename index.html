@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Gallery</title>
+<style>
+  :root {
+    --gallery-gap: 18px;
+    --thumbnail-radius: 12px;
+    --hover-darkness: .48;
+    --gallery-max-width: 1400px;
+    --page-background: transparent;
+    --play-button-size: 58px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    background: var(--page-background);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  body { color: #fff; }
+
+  .video-gallery {
+    width: 100%;
+    max-width: var(--gallery-max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--gallery-gap);
+  }
+
+  .video-card {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: var(--thumbnail-radius);
+    background: #222;
+    cursor: pointer;
+    text-align: left;
+    isolation: isolate;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .video-card img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform .28s ease;
+  }
+
+  .video-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, var(--hover-darkness));
+    opacity: 0;
+    transition: opacity .22s ease;
+  }
+
+  .video-card:hover::after,
+  .video-card:focus-visible::after,
+  .video-card:focus-within::after { opacity: 1; }
+
+  .video-card:hover img { transform: scale(1.035); }
+
+  .video-card__details {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 16px;
+    color: #fff;
+    text-align: center;
+    opacity: 0;
+    transition: opacity .22s ease;
+  }
+
+  .video-card:hover .video-card__details,
+  .video-card:focus-visible .video-card__details,
+  .video-card:focus-within .video-card__details { opacity: 1; }
+
+  .video-card__play {
+    width: var(--play-button-size);
+    height: var(--play-button-size);
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid rgba(255,255,255,.95);
+    border-radius: 50%;
+    background: rgba(0,0,0,.18);
+  }
+
+  .video-card__play svg { width: 23px; height: 23px; margin-left: 3px; }
+
+  .video-card__title {
+    font-size: clamp(13px, 1.3vw, 17px);
+    line-height: 1.35;
+    font-weight: 600;
+    text-shadow: 0 1px 8px rgba(0,0,0,.45);
+  }
+
+  /* Keyboard focus is visible; on touch devices, tap opens the lightbox. */
+  .video-card:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+  .video-lightbox[hidden] { display: none !important; }
+
+  .video-lightbox {
+    position: fixed;
+    z-index: 2147483647;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: clamp(14px, 4vw, 48px);
+    background: rgba(0,0,0,.88);
+  }
+
+  .video-lightbox__dialog {
+    position: relative;
+    width: min(100%, 1100px);
+    margin: 0;
+  }
+
+  .video-lightbox__frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: #000;
+    border-radius: 8px;
+    box-shadow: 0 18px 70px rgba(0,0,0,.45);
+  }
+
+  .video-lightbox__frame iframe {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+  }
+
+  .video-lightbox__close {
+    position: absolute;
+    z-index: 2;
+    top: -46px;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    border: 1px solid rgba(255,255,255,.65);
+    border-radius: 50%;
+    color: #fff;
+    background: rgba(0,0,0,.35);
+    font: 300 29px/1 Arial, sans-serif;
+    cursor: pointer;
+  }
+
+  .video-lightbox__close:hover,
+  .video-lightbox__close:focus-visible { background: rgba(255,255,255,.18); }
+
+  .video-lightbox__close:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 3px;
+  }
+
+  @media (max-width: 760px) {
+    .video-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    :root { --gallery-gap: 12px; --thumbnail-radius: 10px; --play-button-size: 48px; }
+    .video-card__details { gap: 7px; padding: 9px; }
+    .video-card__title { font-size: 13px; }
+    .video-lightbox { padding: 12px; }
+    .video-lightbox__close { top: -46px; }
+  }
+
+  @media (max-width: 420px) {
+    .video-gallery { grid-template-columns: 1fr; }
+    .video-card__title { font-size: 15px; }
+  }
+
+  @media (hover: none) {
+    /* Keep titles hidden on touch devices until a visitor taps a thumbnail. */
+    .video-card:hover::after,
+    .video-card:hover .video-card__details { opacity: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: .01ms !important; }
+  }
+</style>
+</head>
+<body>
+<main class="video-gallery" id="videoGallery" aria-label="Video gallery"></main>
+
+<div class="video-lightbox" id="videoLightbox" hidden role="dialog" aria-modal="true" aria-label="Video player">
+  <div class="video-lightbox__dialog">
+    <button class="video-lightbox__close" id="closeLightbox" type="button" aria-label="Close video">×</button>
+    <div class="video-lightbox__frame" id="lightboxFrame"></div>
+  </div>
+</div>
+
+<script>
+/*
+===============================================================================
+EASY EDITING GUIDE
+- Rearrange videos: move an entire video object up or down inside VIDEO_LIST.
+- Change hover title: edit the title value.
+- Use your own thumbnail: paste a direct image URL into thumbnail.
+- Use the automatic thumbnail: leave thumbnail as "".
+- Add a video: copy one object and replace its title and url.
+- Supported video links: YouTube and Vimeo only.
+===============================================================================
+*/
+const VIDEO_LIST = [
+  // 01 — Vimeo
+  {
+    title: "Video 1",
+    url: "https://vimeo.com/839554140",
+    thumbnail: ""
+  },
+  // 02 — Vimeo
+  {
+    title: "Video 2",
+    url: "https://vimeo.com/839553430?fl=pl&fe=vl",
+    thumbnail: ""
+  },
+  // 03 — YouTube
+  {
+    title: "Video 3",
+    url: "https://youtu.be/1tzI__Lw_yI",
+    thumbnail: ""
+  },
+  // 04 — YouTube
+  {
+    title: "Video 4",
+    url: "https://youtu.be/SednswaxfvU",
+    thumbnail: ""
+  },
+  // 05 — YouTube
+  {
+    title: "Video 5",
+    url: "https://youtu.be/ilSiQnO1xug",
+    thumbnail: ""
+  },
+  // 06 — YouTube
+  {
+    title: "Video 6",
+    url: "https://youtu.be/RLwH9iDeAfA?si=AUBnU215pGJM5LCr",
+    thumbnail: ""
+  },
+  // 07 — YouTube
+  {
+    title: "Video 7",
+    url: "https://youtu.be/WxIX2m_3DSo?si=U6Z8xQoAjWR5WX6i",
+    thumbnail: ""
+  },
+  // 08 — YouTube
+  {
+    title: "Video 8",
+    url: "https://youtu.be/OJw5ur7jCs8?si=UwOO1E7zc27m3xOR",
+    thumbnail: ""
+  },
+  // 09 — YouTube
+  {
+    title: "Video 9",
+    url: "https://youtu.be/NO_k5clSFTs?si=Yd8PdfP3fXTvutJp",
+    thumbnail: ""
+  },
+  // 10 — YouTube
+  {
+    title: "Video 10",
+    url: "https://youtu.be/37Vl8mNd_to?si=_tVl29d4l65MEi06",
+    thumbnail: ""
+  },
+  // 11 — YouTube
+  {
+    title: "Video 11",
+    url: "https://youtu.be/nba3oSjFIbE?si=Pq4fCoDTvdV2VDCJ",
+    thumbnail: ""
+  },
+  // 12 — YouTube
+  {
+    title: "Video 12",
+    url: "https://youtu.be/RvmsAb7AEr0?si=rxfSxljtdx7cFaR_",
+    thumbnail: ""
+  },
+  // 13 — YouTube
+  {
+    title: "Video 13",
+    url: "https://www.youtube.com/watch?v=iSZIgAtUG_s",
+    thumbnail: ""
+  },
+  // 14 — YouTube
+  {
+    title: "Video 14",
+    url: "https://youtu.be/QrkVIa35N1o?si=aO3gTsMN7oxblEKg",
+    thumbnail: ""
+  },
+  // 15 — YouTube
+  {
+    title: "Video 15",
+    url: "https://youtu.be/tfAC3Iq6WQg?si=-Y3YQuSYnnrZFpz4",
+    thumbnail: ""
+  },
+  // 16 — YouTube
+  {
+    title: "Video 16",
+    url: "https://youtu.be/E0hphfGGUVs?si=OWqvc2YAyxnGVRyl",
+    thumbnail: ""
+  },
+  // 17 — YouTube
+  {
+    title: "Video 17",
+    url: "https://youtu.be/5vmm35QF8Bs?si=yFoudaDpaG1wL0H8",
+    thumbnail: ""
+  }
+];
+
+const gallery = document.getElementById("videoGallery");
+const lightbox = document.getElementById("videoLightbox");
+const lightboxFrame = document.getElementById("lightboxFrame");
+const closeButton = document.getElementById("closeLightbox");
+let lastFocusedElement = null;
+
+function parseVideo(url) {
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
+
+    if (host === "youtu.be") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      return id ? { provider: "youtube", id } : null;
+    }
+
+    if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
+      let id = parsed.searchParams.get("v");
+      if (!id && /^\/(embed|shorts|live)\//.test(parsed.pathname)) {
+        id = parsed.pathname.split("/").filter(Boolean)[1];
+      }
+      return id ? { provider: "youtube", id } : null;
+    }
+
+    if (host === "vimeo.com" || host === "player.vimeo.com") {
+      const parts = parsed.pathname.split("/").filter(Boolean);
+      const id = [...parts].reverse().find(part => /^\d+$/.test(part));
+      return id ? { provider: "vimeo", id } : null;
+    }
+  } catch (error) {
+    return null;
+  }
+  return null;
+}
+
+function makeEmbedUrl(video) {
+  if (video.provider === "youtube") {
+    return "https://www.youtube-nocookie.com/embed/" + encodeURIComponent(video.id) +
+      "?autoplay=1&rel=0&playsinline=1";
+  }
+  return "https://player.vimeo.com/video/" + encodeURIComponent(video.id) +
+    "?autoplay=1&title=0&byline=0&portrait=0";
+}
+
+function automaticThumbnail(video) {
+  if (video.provider === "youtube") {
+    return "https://i.ytimg.com/vi/" + encodeURIComponent(video.id) + "/hqdefault.jpg";
+  }
+  /* Vumbnail provides a thumbnail image for public Vimeo videos. If unavailable,
+     the card uses the neutral fallback background; a custom image URL can be set above. */
+  return "https://vumbnail.com/" + encodeURIComponent(video.id) + ".jpg";
+}
+
+function createCard(video, index) {
+  const parsed = parseVideo(video.url);
+  if (!parsed) {
+    console.warn("Skipping unsupported or invalid video URL at item " + (index + 1), video.url);
+    return null;
+  }
+
+  const card = document.createElement("button");
+  card.className = "video-card";
+  card.type = "button";
+  card.setAttribute("aria-label", "Play " + (video.title || ("Video " + (index + 1))));
+
+  const img = document.createElement("img");
+  img.alt = "";
+  img.loading = "lazy";
+  img.decoding = "async";
+  img.src = (video.thumbnail && video.thumbnail.trim()) || automaticThumbnail(parsed);
+  img.onerror = function () {
+    if (img.dataset.fallbackTried !== "yes") {
+      img.dataset.fallbackTried = "yes";
+      if (parsed.provider === "youtube") {
+        img.src = "https://i.ytimg.com/vi/" + encodeURIComponent(parsed.id) + "/mqdefault.jpg";
+        return;
+      }
+    }
+    img.removeAttribute("src");
+    card.style.background = "#303030";
+  };
+
+  const details = document.createElement("span");
+  details.className = "video-card__details";
+  details.setAttribute("aria-hidden", "true");
+
+  const play = document.createElement("span");
+  play.className = "video-card__play";
+  play.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5c0-.78.85-1.26 1.52-.85l10.1 6.1a1.47 1.47 0 0 1 0 2.5l-10.1 6.1A.99.99 0 0 1 8 18.5z"/></svg>';
+
+  const title = document.createElement("span");
+  title.className = "video-card__title";
+  title.textContent = video.title || ("Video " + (index + 1));
+
+  details.append(play, title);
+  card.append(img, details);
+  card.addEventListener("click", () => openLightbox(parsed, card));
+  return card;
+}
+
+function renderGallery() {
+  VIDEO_LIST.forEach((video, index) => {
+    const card = createCard(video, index);
+    if (card) gallery.appendChild(card);
+  });
+}
+
+function openLightbox(video, opener) {
+  lastFocusedElement = opener;
+  const iframe = document.createElement("iframe");
+  iframe.src = makeEmbedUrl(video);
+  iframe.title = "Video player";
+  iframe.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen; clipboard-write";
+  iframe.allowFullscreen = true;
+  iframe.referrerPolicy = "strict-origin-when-cross-origin";
+
+  lightboxFrame.replaceChildren(iframe);
+  lightbox.hidden = false;
+  document.body.style.overflow = "hidden";
+  closeButton.focus();
+}
+
+function closeLightbox() {
+  if (lightbox.hidden) return;
+  lightbox.hidden = true;
+  /* Removing the iframe stops playback immediately. */
+  lightboxFrame.replaceChildren();
+  document.body.style.overflow = "";
+  if (lastFocusedElement) lastFocusedElement.focus();
+}
+
+closeButton.addEventListener("click", closeLightbox);
+lightbox.addEventListener("click", event => {
+  if (event.target === lightbox) closeLightbox();
+});
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && !lightbox.hidden) closeLightbox();
+});
+
+renderGallery();
+</script>
+</body>
+</html>
